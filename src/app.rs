@@ -90,13 +90,23 @@ impl eframe::App for FlossApp {
                                     }
                                 }
                             });
+                            if new_popup.title.is_empty() {
+                                ui.allocate_ui(Vec2::new(600.0, ui.spacing().interact_size.y), |ui| {
+                                    let btn = ui.put(ui.max_rect(), Button::new("Remove Description"));
+                                    if btn.clicked() {
+                                        new_popup.description = None;
+                                    }
+                                });
+                            }
                         } else {
-                            ui.allocate_ui(Vec2::new(600.0, ui.spacing().interact_size.y), |ui| {
-                                let btn = ui.put(ui.max_rect(), Button::new("Add Description"));
-                                if btn.clicked() {
-                                    new_popup.description = Some("".to_owned());
-                                }
-                            });
+                            if new_popup.title.is_empty() {
+                                ui.allocate_ui(Vec2::new(600.0, ui.spacing().interact_size.y), |ui| {
+                                    let btn = ui.put(ui.max_rect(), Button::new("Add Description"));
+                                    if btn.clicked() {
+                                        new_popup.description = Some("".to_owned());
+                                    }
+                                });
+                            }
                         }
                         if clear_desc {
                             new_popup.description = None;
