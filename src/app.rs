@@ -115,7 +115,7 @@ impl eframe::App for FlossApp {
                             ui.allocate_ui(Vec2::new(600.0, ui.spacing().interact_size.y), |ui| {
                                 ui.columns(2, |cols| {
                                     cols[0].columns(2, |cols| {
-                                        let create = cols[0].put(cols[0].max_rect(), Button::new("Create"));
+                                        let create = cols[0].put(cols[0].max_rect(), Button::new("Add"));
                                         let clear = cols[1].put(cols[1].max_rect(), Button::new("Clear"));
                                         if create.clicked() {
                                             tasks.push(Task::new(new_popup.title.clone(), cols[0].next_id()));
