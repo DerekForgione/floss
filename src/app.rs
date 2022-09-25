@@ -1,26 +1,38 @@
-/// We derive Deserialize/Serialize so we can persist app state on shutdown.
-#[derive(serde::Deserialize, serde::Serialize)]
-#[serde(default)] // if we add new fields, give them default values when deserializing old state
-pub struct TemplateApp {
-    // Example stuff:
-    label: String,
+use crate::tasker::{self, *};
+use egui::{self, *};
 
-    // this how you opt-out of serialization of a member
-    #[serde(skip)]
-    value: f32,
+struct NewTaskPopup {
+    // title, description
+    pub title: String,
+    pub description: Option<String>,
 }
 
-impl Default for TemplateApp {
+impl Default for NewTaskPopup {
     fn default() -> Self {
         Self {
-            // Example stuff:
-            label: "Hello World!".to_owned(),
-            value: 2.7,
+            title: "".to_owned(),
+            description: None,
         }
     }
 }
 
-impl TemplateApp {
+/// We derive Deserialize/Serialize so we can persist app state on shutdown.
+#[derive(serde::Deserialize, serde::Serialize)]// if we add new fields, give them default values when deserializing old state
+pub struct FlossApp {
+    tasks: Vec<Task>,
+    #[serde(skip)]
+    new_popup: NewTaskPopup,
+}
+
+impl Default for FlossApp {
+    fn default() -> Self {
+        Self {
+            ..Default::default()
+        }
+    }
+}
+
+impl FlossApp {
     /// Called once before the first frame.
     pub fn new(cc: &eframe::CreationContext<'_>) -> Self {
         // This is also where you can customized the look at feel of egui using
@@ -36,7 +48,8 @@ impl TemplateApp {
     }
 }
 
-impl eframe::App for TemplateApp {
+
+impl eframe::App for FlossApp {
     /// Called by the frame work to save state before shutdown.
     fn save(&mut self, storage: &mut dyn eframe::Storage) {
         eframe::set_value(storage, eframe::APP_KEY, self);
@@ -45,7 +58,7 @@ impl eframe::App for TemplateApp {
     /// Called each time the UI needs repainting, which may be many times per second.
     /// Put your widgets into a `SidePanel`, `TopPanel`, `CentralPanel`, `Window` or `Area`.
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
-        let Self { label, value } = self;
+        let Self { tasks, new_popup } = self;
 
         // Examples of how to create different panels and windows.
         // Pick whichever suits you.
@@ -61,46 +74,94 @@ impl eframe::App for TemplateApp {
                         _frame.close();
                     }
                 });
-            });
-        });
+                ui.menu_button("Add Task", |ui| {
+                    ui.group(|ui| {
+                        ui.allocate_ui(Vec2::new(600.0, ui.spacing().interact_size.y), |ui| {
+                            ui.put(ui.max_rect(), text_edit::TextEdit::singleline(&mut new_popup.title).hint_text("Title"));
+                        });
+                        let mut clear_desc = false;
+                        if let Some(description) = &mut new_popup.description {
+                            ui.allocate_ui(Vec2::new(600.0, ui.spacing().interact_size.y * 10.0), |ui| {
+                                let empty_before = description.is_empty();
+                                let resp = ui.put(ui.max_rect(), text_edit::TextEdit::multiline(description).hint_text("Description (Press [Delete] To Remove)"));
+                                if resp.has_focus() && description.is_empty() && empty_before {
+                                    if ui.input().key_pressed(Key::Delete) {
+                                        clear_desc = true;
+                                    }
+                                }
+                            });
+                        } else {
+                            ui.allocate_ui(Vec2::new(600.0, ui.spacing().interact_size.y), |ui| {
+                                let btn = ui.put(ui.max_rect(), Button::new("Add Description"));
+                                if btn.clicked() {
+                                    new_popup.description = Some("".to_owned());
+                                }
+                            });
+                        }
+                        if clear_desc {
+                            new_popup.description = None;
+                        }
+                        if !new_popup.title.is_empty() {
+                            ui.allocate_ui(Vec2::new(600.0, ui.spacing().interact_size.y), |ui| {
+                                ui.columns(2, |cols| {
+                                    cols[0].columns(2, |cols| {
+                                        let create = cols[0].put(cols[0].max_rect(), Button::new("Create"));
+                                        let clear = cols[1].put(cols[1].max_rect(), Button::new("Clear"));
+                                        if create.clicked() {
+                                            tasks.push(Task::new(new_popup.title.clone(), cols[0].next_id()));
+                                            new_popup.title = "".to_owned();
+                                            new_popup.description = None;
+                                        }
+                                        if clear.clicked() {
+                                            new_popup.title = "".to_owned();
+                                            new_popup.description = None;
+                                        }
+                                    });
+                                    let desc_title = if new_popup.description.is_some() {
+                                        "Remove Description".to_owned()
+                                    } else {
+                                        "Add Description".to_owned()
+                                    };
+                                    let desc_btn = cols[1].put(cols[1].max_rect(), Button::new(desc_title));
+                                    if desc_btn.clicked() {
+                                        if new_popup.description.is_some() {
+                                            new_popup.description = None;
+                                        } else {
+                                            new_popup.description = Some("".to_owned());
+                                        }
+                                    }
+                                });
+                            });
+                        }
 
-        egui::SidePanel::left("side_panel").show(ctx, |ui| {
-            ui.heading("Side Panel");
+                    });
 
-            ui.horizontal(|ui| {
-                ui.label("Write something: ");
-                ui.text_edit_singleline(label);
-            });
-
-            ui.add(egui::Slider::new(value, 0.0..=10.0).text("value"));
-            if ui.button("Increment").clicked() {
-                *value += 1.0;
-            }
-
-            ui.with_layout(egui::Layout::bottom_up(egui::Align::LEFT), |ui| {
-                ui.horizontal(|ui| {
-                    ui.spacing_mut().item_spacing.x = 0.0;
-                    ui.label("powered by ");
-                    ui.hyperlink_to("egui", "https://github.com/emilk/egui");
-                    ui.label(" and ");
-                    ui.hyperlink_to(
-                        "eframe",
-                        "https://github.com/emilk/egui/tree/master/crates/eframe",
-                    );
-                    ui.label(".");
+                    // let (rect, _) = ui.allocate_at_least(Vec2::new(400.0, ui.spacing().interact_size.y * 10.0 + 10.0), Sense::hover());
+                    // ui.child_ui(rect, Layout::top_down(Align::Min)).vertical(|ui| {
+                    //     ui.vertical(|ui| {
+                    //         let (_, rect) = ui.allocate_space(Vec2::new(ui.available_width(), ui.spacing().interact_size.y));
+                    //         ui.put(rect, text_edit::TextEdit::singleline(&mut new_popup.title).hint_text("Title"));
+                    //         let (_, rect) = ui.allocate_space(Vec2::new(ui.available_width(), ui.spacing().interact_size.y * 8.0));
+                    //         ui.put(rect, egui::widgets::text_edit::TextEdit::multiline(&mut new_popup.title).hint_text("Description"));
+                    //         ui.horizontal(|ui| {
+                    //             if ui.button("Create").clicked() {
+                    //                 let mut task = Task::new(new_popup.title.clone(), ui.next_id());
+                    //                 task.description = new_popup.description.clone();
+                    //                 new_popup.title = "".to_owned();
+                    //                 new_popup.description = None;
+                    //                 tasks.push(task);
+                    //             }
+                    //         });
+                    //     });
+                    // });
                 });
             });
         });
 
         egui::CentralPanel::default().show(ctx, |ui| {
-            // The central panel the region left after adding TopPanel's and SidePanel's
-
-            ui.heading("eframe template");
-            ui.hyperlink("https://github.com/emilk/eframe_template");
-            ui.add(egui::github_link_file!(
-                "https://github.com/emilk/eframe_template/blob/master/",
-                "Source code."
-            ));
+            ScrollArea::vertical().show(ui, |ui| {
+                tasker::render_list(ui, tasks, AdderPosition::Above);
+            });
             egui::warn_if_debug_build(ui);
         });
 
