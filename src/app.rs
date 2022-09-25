@@ -145,25 +145,6 @@ impl eframe::App for FlossApp {
                         }
 
                     });
-
-                    // let (rect, _) = ui.allocate_at_least(Vec2::new(400.0, ui.spacing().interact_size.y * 10.0 + 10.0), Sense::hover());
-                    // ui.child_ui(rect, Layout::top_down(Align::Min)).vertical(|ui| {
-                    //     ui.vertical(|ui| {
-                    //         let (_, rect) = ui.allocate_space(Vec2::new(ui.available_width(), ui.spacing().interact_size.y));
-                    //         ui.put(rect, text_edit::TextEdit::singleline(&mut new_popup.title).hint_text("Title"));
-                    //         let (_, rect) = ui.allocate_space(Vec2::new(ui.available_width(), ui.spacing().interact_size.y * 8.0));
-                    //         ui.put(rect, egui::widgets::text_edit::TextEdit::multiline(&mut new_popup.title).hint_text("Description"));
-                    //         ui.horizontal(|ui| {
-                    //             if ui.button("Create").clicked() {
-                    //                 let mut task = Task::new(new_popup.title.clone(), ui.next_id());
-                    //                 task.description = new_popup.description.clone();
-                    //                 new_popup.title = "".to_owned();
-                    //                 new_popup.description = None;
-                    //                 tasks.push(task);
-                    //             }
-                    //         });
-                    //     });
-                    // });
                 });
             });
         });
