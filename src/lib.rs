@@ -2,5 +2,4 @@
 
 mod app;
 mod tasker;
-mod taskapp;
 pub use app::FlossApp;
