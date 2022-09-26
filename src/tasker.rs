@@ -265,7 +265,14 @@ impl Task {
 
     pub fn render_header(&mut self, ui: &mut Ui) -> Response {
         ui.horizontal(|ui| {
-            let mark = button::mark(ui, self.incomplete());
+            let mut check = self.complete();
+            let mark = ui.checkbox(&mut check, "");
+            
+            // if check && self.incomplete() {
+            //     self.mark_complete();
+            // } else if !check && self.complete() {
+            //     self.mark_incomplete();
+            // }
             let title = if self.mode == ControlMode::Editing {
                 let resp = ui.text_edit_singleline(&mut self.title);
                 if resp.lost_focus() {
@@ -280,7 +287,7 @@ impl Task {
                 resp
             };
             let right = button::right(ui, self);
-            if mark.clicked() {
+            if mark.changed() {
                 self.toggle_complete();
             }
             mark | title | right
