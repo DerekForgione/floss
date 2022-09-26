@@ -153,7 +153,7 @@ impl eframe::App for FlossApp {
 
         egui::CentralPanel::default().show(ctx, |ui| {
             ScrollArea::vertical().show(ui, |ui| {
-                tasker::render_list(ui, tasks, AdderPosition::Above);
+                tasker::render_list(ui, tasks);
             });
             egui::warn_if_debug_build(ui);
         });
