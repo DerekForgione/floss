@@ -1,5 +1,7 @@
 use crate::tasker::{self, *};
-use egui::{self, *};
+use eframe::glow::FRACTIONAL_EVEN;
+use egui::{self, *, style::Margin};
+use crate::ui_extensions::*;
 
 struct NewTaskPopup {
     // title, description
@@ -22,13 +24,14 @@ pub struct FlossApp {
     tasks: Vec<Task>,
     #[serde(skip)]
     new_popup: NewTaskPopup,
+    #[serde(skip)]
+    sample_list: Vec<Task>,
 }
 
 impl Default for FlossApp {
     fn default() -> Self {
         Self {
-           tasks: Vec::new(),
-           new_popup: NewTaskPopup { title: "".to_owned(), description: None }
+           ..Default::default()
         }
     }
 }
@@ -60,7 +63,7 @@ impl eframe::App for FlossApp {
     /// Called each time the UI needs repainting, which may be many times per second.
     /// Put your widgets into a `SidePanel`, `TopPanel`, `CentralPanel`, `Window` or `Area`.
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
-        let Self { tasks, new_popup } = self;
+        let Self { tasks, new_popup, sample_list } = self;
 
         // Examples of how to create different panels and windows.
         // Pick whichever suits you.
@@ -158,12 +161,68 @@ impl eframe::App for FlossApp {
             egui::warn_if_debug_build(ui);
         });
 
-        if false {
-            egui::Window::new("Window").show(ctx, |ui| {
-                ui.label("Windows can be moved by dragging them.");
-                ui.label("They are automatically sized based on contents.");
-                ui.label("You can turn on resizing and scrolling if you like.");
-                ui.label("You would normally chose either panels OR windows.");
+        if true {
+            egui::Window::new("Test GUI").show(ctx, |ui| {
+                ui.style_mut().override_text_style = Some(TextStyle::Monospace);
+                // Sample Task UI
+                let top_btn = ui.horizontal(|top| {
+                    if sample_list.is_empty() {
+                        let create = top.put(top.max_rect(), Button::new("Create New Task."));
+                        if create.clicked() {
+                            sample_list.push(Task::new("Untitled Task", top.next_id()));
+                        }
+                        create
+                    } else {
+                        let clear = top.put(top.max_rect(), Button::new("Remove All Tasks"));
+                        if clear.clicked() {
+                            sample_list.clear();
+                        }
+                        clear
+                    }
+                });
+                if !sample_list.is_empty() {
+                    ui.allocate_ui(Vec2::new(400.0, 500.0), |ui| { ui.vertical(|ui| {
+                        Frame::group(ui.style())
+                        .outer_margin(Margin::same(0.0))
+                        .inner_margin(Margin::same(0.0))
+                        .rounding(Rounding::none())
+                        .show(ui, |ui| {
+                            for task in sample_list.iter_mut() {
+                                ui.horizontal(|ui| {
+
+                                    let mut check = task.complete();
+                                    if ui.checkbox(&mut check, "").changed() {
+                                        task.toggle_complete();
+                                    }
+                                    ui.label(&task.title);
+                                });
+                                
+                            }
+                        });
+                    });}); // win.allocate_ui
+                    if ui.button("Another One").clicked() {
+                        sample_list.push(Task::new("Untitled", ui.next_id()));
+                    }
+                }
+                let result = ui.button_bar(&[
+                    ("Hello", "The quick brown fox jumps over the lazy dog."),
+                    ("Test1", "This is a test."),
+                    ("Test2", "This is a test."),
+                    ("Test3", "This is a test."),
+                    ("Test4", "This is a test."),
+                ]);
+                if result.response.changed() {
+                    println!("{}", result.inner.unwrap_or("<NONE>"));
+                }
+                ui.icon(Icon::Info);
+                ui.icon(Icon::Gear);
+                ui.with_layout(Layout::top_down(Align::Min).with_cross_justify(true), |ui| {
+                    ui.style_mut().override_text_style = Some(TextStyle::Monospace);
+                    Frame::group(ui.style()).inner_margin(Margin::same(0.0)).show(ui, |ui| {
+                        ui.button("Test");
+                        ui.button("Another button");
+                    });
+                });
             });
         }
     }
