@@ -49,6 +49,7 @@ impl FlossApp {
     }
 }
 
+const POPUP_WIDTH: f32 = 300.0;
 
 impl eframe::App for FlossApp {
     /// Called by the frame work to save state before shutdown.
@@ -77,12 +78,12 @@ impl eframe::App for FlossApp {
                 });
                 ui.menu_button("Add Task", |ui| {
                     ui.group(|ui| {
-                        ui.allocate_ui(Vec2::new(600.0, ui.spacing().interact_size.y), |ui| {
+                        ui.allocate_ui(Vec2::new(POPUP_WIDTH, ui.spacing().interact_size.y), |ui| {
                             ui.put(ui.max_rect(), text_edit::TextEdit::singleline(&mut new_popup.title).hint_text("Title"));
                         });
                         let mut clear_desc = false;
                         if let Some(description) = &mut new_popup.description {
-                            ui.allocate_ui(Vec2::new(600.0, ui.spacing().interact_size.y * 10.0), |ui| {
+                            ui.allocate_ui(Vec2::new(POPUP_WIDTH, ui.spacing().interact_size.y * 4.0), |ui| {
                                 let empty_before = description.is_empty();
                                 let resp = ui.put(ui.max_rect(), text_edit::TextEdit::multiline(description).hint_text("Description (Press [Delete] To Remove)"));
                                 if resp.has_focus() && description.is_empty() && empty_before {
@@ -92,7 +93,7 @@ impl eframe::App for FlossApp {
                                 }
                             });
                             if new_popup.title.is_empty() {
-                                ui.allocate_ui(Vec2::new(600.0, ui.spacing().interact_size.y), |ui| {
+                                ui.allocate_ui(Vec2::new(POPUP_WIDTH, ui.spacing().interact_size.y), |ui| {
                                     let btn = ui.put(ui.max_rect(), Button::new("Remove Description"));
                                     if btn.clicked() {
                                         new_popup.description = None;
@@ -101,7 +102,7 @@ impl eframe::App for FlossApp {
                             }
                         } else {
                             if new_popup.title.is_empty() {
-                                ui.allocate_ui(Vec2::new(600.0, ui.spacing().interact_size.y), |ui| {
+                                ui.allocate_ui(Vec2::new(POPUP_WIDTH, ui.spacing().interact_size.y), |ui| {
                                     let btn = ui.put(ui.max_rect(), Button::new("Add Description"));
                                     if btn.clicked() {
                                         new_popup.description = Some("".to_owned());
@@ -113,7 +114,7 @@ impl eframe::App for FlossApp {
                             new_popup.description = None;
                         }
                         if !new_popup.title.is_empty() {
-                            ui.allocate_ui(Vec2::new(600.0, ui.spacing().interact_size.y), |ui| {
+                            ui.allocate_ui(Vec2::new(POPUP_WIDTH, ui.spacing().interact_size.y), |ui| {
                                 ui.columns(2, |cols| {
                                     cols[0].columns(2, |cols| {
                                         let create = cols[0].put(cols[0].max_rect(), Button::new("Add"));
