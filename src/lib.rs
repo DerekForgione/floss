@@ -2,4 +2,5 @@
 
 mod app;
 mod tasker;
+mod ui_extensions;
 pub use app::FlossApp;
