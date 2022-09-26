@@ -40,18 +40,6 @@ pub enum TaskData {
     Multiple(Vec<Task>),
 }
 
-#[derive(PartialEq, Eq, PartialOrd, Ord, Clone, Copy, Debug)]
-enum ControlMode {
-    Default,
-    Editing,
-}
-
-impl Default for ControlMode {
-    fn default() -> Self {
-        ControlMode::Default
-    }
-}
-
 #[derive(serde::Deserialize, serde::Serialize)]
 pub struct Task {
     pub title: String,
@@ -325,6 +313,19 @@ impl Task {
     }
     
 }
+
+// pub fn render_task(ui: &mut Ui, task: &mut Task) -> Response {
+//     ui.group(|group| {
+//         // Render Header
+//         if task.single() {
+            
+//         } else { // Multi   
+//             ui.indent(task.id.with("sub_tasks"), |sub| {
+                
+//             });
+//         }
+//     }).inner
+// }
 
 pub fn render_list(ui: &mut Ui, tasks: &mut Vec<Task>) -> Response {
     ui.vertical(|ui| {
