@@ -940,7 +940,7 @@ where V: Copy {
                 ui.style_mut().visuals.widgets.active.rounding = Rounding::none();
                 ui.style_mut().visuals.widgets.hovered.rounding = Rounding::none();
                 for item in self.items.iter() {
-                    let (id, rect) = ui.allocate_space(size);
+                    let (_, rect) = ui.allocate_space(size);
                     
                     let btn = Button::new(item.0)
                         .stroke(Stroke::none());
