@@ -27,7 +27,8 @@ pub struct FlossApp {
 impl Default for FlossApp {
     fn default() -> Self {
         Self {
-            ..Default::default()
+           tasks: Vec::new(),
+           new_popup: NewTaskPopup { title: "".to_owned(), description: None }
         }
     }
 }
