@@ -263,15 +263,17 @@ impl Task {
 
     pub fn render_header(&mut self, ui: &mut Ui) -> Response {
         ui.horizontal(|ui| {
-            let mut check = self.complete();
-            let mark = ui.checkbox(&mut check, "");
-            if self.mode == ControlMode::Editing {
-                ui.set_visible(false);
-            }
-            ui.set_visible(true);
-            if mark.changed() {
-                self.toggle_complete();
-            }        
+            let mark = ui.horizontal(|ui| {
+                let mut check = self.complete();
+                if self.mode == ControlMode::Editing {
+                    ui.set_visible(false);
+                }
+                let mark = ui.checkbox(&mut check, "");
+                if mark.changed() {
+                    self.toggle_complete();
+                }
+                mark
+            }).inner;
             let title = if self.mode == ControlMode::Editing {
                 let resp = ui.text_edit_singleline(&mut self.title);
                 if resp.lost_focus() {
