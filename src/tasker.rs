@@ -9,11 +9,11 @@ use egui::{self, *};
 
 pub trait AtomicId {
     fn next_id(&self) -> Id;
-
     fn next_index(&self) -> usize;
 }
 
 impl AtomicId for Ui {
+
     fn next_id(&self) -> Id {
         use std::sync::atomic::{AtomicUsize, Ordering};
         static COUNTER: AtomicUsize = AtomicUsize::new(0);
@@ -25,6 +25,7 @@ impl AtomicId for Ui {
         static COUNTER: AtomicUsize = AtomicUsize::new(0);
         COUNTER.fetch_add(1, Ordering::Relaxed)
     }
+
 }
 
 fn next_index() -> usize {
@@ -33,8 +34,6 @@ fn next_index() -> usize {
     COUNTER.fetch_add(1, Ordering::Relaxed)
 }
 
-/// I know the name is strange, but this is meant to represent
-/// the two types of tasks.
 #[derive(serde::Deserialize, serde::Serialize)]
 pub enum TaskData {
     Single(bool),
@@ -56,7 +55,6 @@ impl Default for ControlMode {
 #[derive(serde::Deserialize, serde::Serialize)]
 pub struct Task {
     pub title: String,
-    /// Description is optional. Can be viewed as popup.
     pub description: Option<String>,
     pub id: Id,
     pub tag: usize,    
@@ -267,12 +265,13 @@ impl Task {
         ui.horizontal(|ui| {
             let mut check = self.complete();
             let mark = ui.checkbox(&mut check, "");
-            
-            // if check && self.incomplete() {
-            //     self.mark_complete();
-            // } else if !check && self.complete() {
-            //     self.mark_incomplete();
-            // }
+            if self.mode == ControlMode::Editing {
+                ui.set_visible(false);
+            }
+            ui.set_visible(true);
+            if mark.changed() {
+                self.toggle_complete();
+            }        
             let title = if self.mode == ControlMode::Editing {
                 let resp = ui.text_edit_singleline(&mut self.title);
                 if resp.lost_focus() {
@@ -287,9 +286,6 @@ impl Task {
                 resp
             };
             let right = button::right(ui, self);
-            if mark.changed() {
-                self.toggle_complete();
-            }
             mark | title | right
         }).response
     }
