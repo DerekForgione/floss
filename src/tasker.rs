@@ -62,7 +62,7 @@ pub struct Task {
     #[serde(skip)]
     remove_me: bool,
     #[serde(skip)]
-    mode: ControlMode,
+    editing: bool,
 }
 
 impl TaskData {
@@ -129,7 +129,7 @@ impl Task {
             tag: next_index(),
             data: TaskData::single(),
             remove_me: false,
-            mode: ControlMode::Default,
+            editing: false,
         }
     }
 
@@ -141,7 +141,7 @@ impl Task {
             tag: next_index(),
             data: TaskData::multi(),
             remove_me: false,
-            mode: ControlMode::Default,
+            editing: false,
         }
     }
 
@@ -265,7 +265,7 @@ impl Task {
         ui.horizontal(|ui| {
             let mark = ui.horizontal(|ui| {
                 let mut check = self.complete();
-                if self.mode == ControlMode::Editing {
+                if self.editing {
                     ui.set_visible(false);
                 }
                 let mark = ui.checkbox(&mut check, "");
@@ -274,20 +274,30 @@ impl Task {
                 }
                 mark
             }).inner;
-            let title = if self.mode == ControlMode::Editing {
+            let title = if self.editing {
                 let resp = ui.text_edit_singleline(&mut self.title);
                 if resp.lost_focus() {
-                    self.mode = ControlMode::Default;
+                    self.editing = false;
                 }
                 resp
             } else {
                 let resp = ui.label(self.title.as_str()).interact(Sense::click());
                 if resp.clicked() {
-                    self.mode = ControlMode::Editing;
+                    self.editing = true;
                 }
                 resp
             };
-            let right = button::right(ui, self);
+            let right = ui.with_layout(Layout::right_to_left(Align::Min), |ui| {
+                let exit = ui.small_button(RichText::new("⊗").color(Color32::RED));
+                if exit.clicked() {
+                    self.remove_me = true;
+                }
+                let edit = ui.small_button(if self.editing { "✏" } else { "💾" });
+                if edit.clicked() {
+                    self.editing = !self.editing;
+                }
+                exit | edit
+            }).inner;
             mark | title | right
         }).response
     }
@@ -307,7 +317,7 @@ impl Task {
                     }))
                     .body(|ui| {
                         let tasks = self.data.tasks();
-                        render_list(ui, tasks, AdderPosition::Above);
+                        render_list(ui, tasks);
                     }).0
             }
         }
@@ -316,61 +326,8 @@ impl Task {
     
 }
 
-enum AddEvent {
-    None,
-    AddTask,
-    AddGroup,
-}
-
-trait Respond {
-    fn respond(&mut self, response: Response) -> Response;
-    fn render<F>(&mut self, ui: &mut Ui, renderer: F) -> Response
-    where F: FnOnce(&mut Ui) -> Response {
-        self.respond(renderer(ui))
-    }
-}
-
-impl Respond for Option<Response> {
-    /// Sets or unions self, returns the response input.
-    /// This allows you to apply a response while also reacting to it.
-    fn respond(&mut self, response: Response) -> Response {
-        if let Some(me) = self {
-            *me = me.union(response.clone());
-        } else {
-            *self = Some(response.clone());
-        }
-        response
-    }
-}
-
-#[derive(PartialEq, PartialOrd, Clone, Copy, Eq, Ord)]
-pub enum AdderPosition {
-    None,
-    Above,
-    Below,
-    Both,
-}
-
-impl AdderPosition {
-    fn above(&self) -> bool {
-        match *self {
-            AdderPosition::Above | AdderPosition::Both => true,
-            _ => false,
-        }
-    }
-
-    fn below(&self) -> bool {
-        match *self {
-            AdderPosition::Below | AdderPosition::Both => true,
-            _ => false,
-        }
-    }
-}
-
-pub fn render_list(ui: &mut Ui, tasks: &mut Vec<Task>, adders: AdderPosition) -> Response {
+pub fn render_list(ui: &mut Ui, tasks: &mut Vec<Task>) -> Response {
     ui.vertical(|ui| {
-
-        if adders.above() { button::adders(ui, tasks); }
 
         if !tasks.is_empty() {
             // Order by incomplete tasks first.
@@ -394,64 +351,6 @@ pub fn render_list(ui: &mut Ui, tasks: &mut Vec<Task>, adders: AdderPosition) ->
                 tasks.remove(index);
             }
         }
-        
-        if adders.below() { button::adders(ui, tasks); }
 
     }).response
-}
-
-mod button {
-    use super::*;
-
-    pub fn adders(ui: &mut Ui, tasks: &mut Vec<Task>) -> Response {
-        let (mut response, action) = ui.horizontal(|ui| {
-            let task = ui.small_button("Add Task");
-            let group = ui.small_button("Add Group");
-            let action = if task.clicked() {
-                AddEvent::AddTask
-            } else if group.clicked() {
-                AddEvent::AddGroup
-            } else {
-                AddEvent::None
-            };
-            (task | group, action)
-        }).inner;
-        match action {
-            AddEvent::AddTask => {
-                tasks.push(Task::new("Untitled Task", ui.next_id()));
-                response.mark_changed();
-            },
-            AddEvent::AddGroup => {
-                tasks.push(Task::group("Untitled Group", ui.next_id()).with(vec![Task::new("Untitled Task", ui.next_id())]));
-                response.mark_changed();
-            },
-            _ => (),
-        }
-        response
-    }
-
-    pub fn right(ui: &mut Ui, task: &mut Task) -> Response {
-        ui.with_layout(Layout::right_to_left(Align::Min), |ui| {
-            let exit = ui.small_button(RichText::new("⊗").color(Color32::RED));
-            if exit.clicked() {
-                task.remove_me = true;
-            }
-            let edit = ui.small_button(if task.mode == ControlMode::Default { "✏" } else { "💾" });
-            if edit.clicked() {
-                task.mode = match  task.mode {
-                    ControlMode::Default => ControlMode::Editing,
-                    ControlMode::Editing => ControlMode::Default,
-                };
-            }
-            exit | edit
-        }).inner
-    }
-
-    pub fn mark(ui: &mut Ui, incomplete: bool) -> Response {
-        ui.small_button(
-            if incomplete { RichText::new("Done").color(Color32::GREEN) }
-            else { RichText::new("Recycle").color(Color32::RED) }
-        )
-    }
-
 }
