@@ -2,6 +2,7 @@ use crate::tasker::{self, *};
 use eframe::glow::FRACTIONAL_EVEN;
 use egui::{self, *, style::Margin};
 use crate::ui_extensions::*;
+use crate::debug::*;
 
 struct NewTaskPopup {
     // title, description
@@ -24,8 +25,16 @@ pub struct FlossApp {
     tasks: Vec<Task>,
     #[serde(skip)]
     new_popup: NewTaskPopup,
+    // Debug Stuff
+    #[cfg(debug_assertions)]
     #[serde(skip)]
     sample_list: Vec<Task>,
+    #[cfg(debug_assertions)]
+    #[serde(skip)]
+    DebugOpen: bool,
+    #[cfg(debug_assertions)]
+    #[serde(skip)]
+    debug: DebugData,
 }
 
 impl Default for FlossApp {
@@ -63,7 +72,15 @@ impl eframe::App for FlossApp {
     /// Called each time the UI needs repainting, which may be many times per second.
     /// Put your widgets into a `SidePanel`, `TopPanel`, `CentralPanel`, `Window` or `Area`.
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
-        let Self { tasks, new_popup, sample_list } = self;
+        let Self { 
+            tasks, 
+            new_popup, 
+            sample_list, 
+            #[cfg(debug_assertions)]
+            DebugOpen,
+            #[cfg(debug_assertions)]
+            debug,
+        } = self;
 
         // Examples of how to create different panels and windows.
         // Pick whichever suits you.
@@ -75,6 +92,10 @@ impl eframe::App for FlossApp {
             // The top panel is often a good place for a menu bar:
             egui::menu::bar(ui, |ui| {
                 ui.menu_button("File", |ui| {
+                    if ui.button("Debug").clicked() {
+                        *DebugOpen = true;
+                        debug.open = true;
+                    }
                     if ui.button("Quit").clicked() {
                         _frame.close();
                     }
@@ -161,10 +182,13 @@ impl eframe::App for FlossApp {
             egui::warn_if_debug_build(ui);
         });
 
+        #[cfg(debug_assertions)]
+        debug.show(ctx);
+        #[cfg(debug_assertions)]
         if true {
-            egui::Window::new("Test GUI").show(ctx, |ui| {
-                ui.style_mut().override_text_style = Some(TextStyle::Monospace);
-                // Sample Task UI
+            egui::Window::new("Test GUI").open(DebugOpen).show(ctx, |ui| {
+                
+                // Sample Task UIm
                 let top_btn = ui.horizontal(|top| {
                     if sample_list.is_empty() {
                         let create = top.put(top.max_rect(), Button::new("Create New Task."));
@@ -189,11 +213,11 @@ impl eframe::App for FlossApp {
                         .show(ui, |ui| {
                             for task in sample_list.iter_mut() {
                                 ui.horizontal(|ui| {
-
                                     let mut check = task.complete();
-                                    if ui.checkbox(&mut check, "").changed() {
+                                    if ui.ballot(&mut check).changed() {
                                         task.toggle_complete();
                                     }
+                                    ui.style_mut().override_text_style = Some(TextStyle::Heading);
                                     ui.label(&task.title);
                                 });
                                 
@@ -215,7 +239,12 @@ impl eframe::App for FlossApp {
                     println!("{}", result.inner.unwrap_or("<NONE>"));
                 }
                 ui.icon(Icon::Info);
-                ui.icon(Icon::Gear);
+                ui.horizontal(|ui| {
+                    if ui.icon_button(Icon::Gear).clicked() {
+                        println!("Interact Height: {}", ui.spacing().interact_size.y);
+                        println!("Available Height: {}", ui.available_height());
+                    }
+                });
                 ui.with_layout(Layout::top_down(Align::Min).with_cross_justify(true), |ui| {
                     ui.style_mut().override_text_style = Some(TextStyle::Monospace);
                     Frame::group(ui.style()).inner_margin(Margin::same(0.0)).show(ui, |ui| {
