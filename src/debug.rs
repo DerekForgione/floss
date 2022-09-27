@@ -7,6 +7,60 @@ use egui::{self, *};
 use crate::ui_extensions::*;
 use crate::tasker::*;
 
+// TODO: Bless this mess.
+//       It seems that I've discovered a branch of mathematics. I wonder what it's called.
+////////////////////////////////////////////////////////////////
+/// Single
+///     Complete
+///         Ballot
+///         Bar
+/// Inactive
+///     Complete
+///         
+///     Bar   
+/// Hovered
+/// Focused
+/// FocusedAndHovered
+/// Pressed
+///     Incomplete
+/// Multi
+///     Complete
+///     Incomplete
+////////////////////////////////////////////////////////////////
+pub struct MockupVisuals {
+    fill_color: Color32,
+    stroke_color: Color32,
+    text_color: Color32,
+    /// Optionally modify text size.
+    text_size: Option<f32>,
+}
+
+impl MockupVisuals {
+    /// By default, sets the text_color to the stroke_color.
+    pub fn new(fill_color: Color32, stroke_color: Color32) -> Self {
+        Self {
+            fill_color,
+            stroke_color,
+            text_color: stroke_color,
+            text_size: None,
+        }
+    }
+
+    pub fn text_color(mut self, value: Color32) -> Self {
+        self.text_color = value;
+        self
+    }
+
+    pub fn text_size(mut self, value: f32) -> Self {
+        self.text_size = Some(value);
+        self
+    }
+}
+
+struct MockupStyle {
+    
+}
+
 pub struct DebugData {
     pub open: bool,
     pub mockup_open: bool,
