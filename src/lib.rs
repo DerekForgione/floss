@@ -3,4 +3,6 @@
 mod app;
 mod tasker;
 mod ui_extensions;
+#[cfg(debug_assertions)]
+mod debug;
 pub use app::FlossApp;
