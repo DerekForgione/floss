@@ -1,3 +1,5 @@
+#![allow(unused)]
+
 use std::time::Instant;
 
 use egui::{self, *};
@@ -6,6 +8,9 @@ use egui::{self, *};
 ///  Create clocked task. The clocked task will have a start/stop button which will measure the
 ///     amount of time spent on a task.  
 //////
+
+
+pub type TaskList = Vec<Task>;
 
 pub trait AtomicId {
     fn next_id(&self) -> Id;
