@@ -972,6 +972,7 @@ pub trait UiExtensions {
     fn icon_small_button(&mut self, icon: Icon) -> Response;
     fn selectable_icon(&mut self, checked: bool, icon: Icon) -> Response;
     fn button_bar<R: Copy>(&mut self, items: &[(&str, R)]) -> InnerResponse<Option<R>>;
+    fn ballot(&mut self, checked: &mut bool) -> Response;
 
 }
 
@@ -999,6 +1000,24 @@ impl UiExtensions for Ui {
         let mut output: Option<R> = None;
         let resp = self.add(ButtonBar::new(items, &mut output));
         InnerResponse { inner: output, response: resp }
+    }
+
+    fn ballot(&mut self, checked: &mut bool) -> Response {
+        // This will draw a square box within a box.
+        let height = self.available_height().min(self.spacing().interact_size.y);
+        let size = Vec2::new(height - 6.0, height - 6.0);
+        let take_size = Vec2::new(height, height);
+        self.allocate_ui(take_size, |ui| {
+            let center = ui.max_rect().center();
+            let position = Pos2::new(center.x - size.x / 2.0, center.y - size.y / 2.0);
+            let rect = Rect::from_min_size(position, size);
+            let resp = ui.allocate_rect(rect, Sense::click());
+            let painter = ui.painter();
+            painter.rect(rect, Rounding::none(), Color32::from_rgb(64, 64, 64), Stroke::new(1.0, Color32::BLACK));
+            // TODO: Remove placeholder
+            resp
+        }).inner
+
     }
 
 }
