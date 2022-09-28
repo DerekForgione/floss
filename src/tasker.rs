@@ -14,20 +14,26 @@ pub type TaskList = Vec<Task>;
 
 pub trait AtomicId {
     fn next_id(&self) -> Id;
-    fn next_index(&self) -> usize;
+    fn next_index(&self) -> u64;
+}
+
+fn global_index() -> u64 {
+    use std::sync::atomic::{AtomicU64, Ordering};
+    static COUNTER: AtomicU64 = AtomicU64::new(0);
+    COUNTER.fetch_add(1, Ordering::Relaxed)
 }
 
 impl AtomicId for Ui {
 
     fn next_id(&self) -> Id {
-        use std::sync::atomic::{AtomicUsize, Ordering};
-        static COUNTER: AtomicUsize = AtomicUsize::new(0);
+        use std::sync::atomic::{AtomicU64, Ordering};
+        static COUNTER: AtomicU64 = AtomicU64::new(0);
         self.id().with(COUNTER.fetch_add(1, Ordering::Relaxed))
     }
 
-    fn next_index(&self) -> usize {
-        use std::sync::atomic::{AtomicUsize, Ordering};
-        static COUNTER: AtomicUsize = AtomicUsize::new(0);
+    fn next_index(&self) -> u64 {
+        use std::sync::atomic::{AtomicU64, Ordering};
+        static COUNTER: AtomicU64 = AtomicU64::new(0);
         COUNTER.fetch_add(1, Ordering::Relaxed)
     }
 
@@ -359,4 +365,9 @@ pub fn render_list(ui: &mut Ui, tasks: &mut Vec<Task>) -> Response {
         }
 
     }).response
+}
+
+pub struct TaskTree {
+    tasks: TaskList,
+    
 }
