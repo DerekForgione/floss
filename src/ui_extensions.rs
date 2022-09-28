@@ -1,7 +1,8 @@
+#![allow(unused)]
+
 // Extensions for egui.ui
 use egui::{self, *};
 
-#[allow(unused)]
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 #[repr(u32)]
 pub enum Icon {
@@ -860,29 +861,6 @@ pub enum Icon {
     Info = 'ℹ' as u32,
 }
 
-impl Into<char> for Icon {
-    fn into(self) -> char {
-        char::from_u32(self as u32).unwrap_or('\0')
-    }
-}
-
-impl Into<String> for Icon {
-    fn into(self) -> String {
-        if let Some(value) = char::from_u32(self as u32) {
-            String::from(value)
-        } else {
-            String::default()
-        }
-    }
-}
-
-impl Widget for Icon {
-    fn ui(self, ui: &mut Ui) -> Response {
-        let text: String = self.into();
-        ui.button(text)
-    }
-}
-
 impl Icon {
 
     fn text(&self) -> String {
@@ -909,6 +887,29 @@ impl Icon {
         ui.label(self.text())
     }
 
+}
+
+impl Into<char> for Icon {
+    fn into(self) -> char {
+        char::from_u32(self as u32).unwrap_or('\0')
+    }
+}
+
+impl Into<String> for Icon {
+    fn into(self) -> String {
+        if let Some(value) = char::from_u32(self as u32) {
+            String::from(value)
+        } else {
+            String::default()
+        }
+    }
+}
+
+impl Widget for Icon {
+    fn ui(self, ui: &mut Ui) -> Response {
+        let text: String = self.into();
+        ui.button(text)
+    }
 }
 
 pub struct ButtonBar<'a,V>
@@ -963,6 +964,260 @@ where V: Copy {
     }
 }
 
+pub struct FunctionBarAction<'a> {
+    text: WidgetText,
+    callback: Option<Box<dyn FnOnce() + 'a>>,
+}
+
+impl<'a> FunctionBarAction<'a> {
+    fn invoke(mut self) {
+        if self.callback.is_some() {
+            if let Some(callback) = self.callback.take() {
+                (callback)();
+            }
+        }
+    }
+}
+
+pub fn action<'a, F: FnOnce() + 'a>(
+    text: impl Into<WidgetText>, 
+    callback: F,
+) -> FunctionBarAction<'a> {
+    FunctionBarAction 
+    { 
+        text: text.into(),
+        callback: Some(Box::new(callback)),
+    }
+}
+
+pub struct FunctionBar<'a> {
+    actions: Vec<FunctionBarAction<'a>>,
+}
+
+impl<'a> FunctionBar<'a> {
+    fn new(actions: Vec<FunctionBarAction<'a>>) -> Self {
+        Self {
+            actions,
+        }
+    }
+}
+
+impl<'a> Widget for FunctionBar<'a> {
+    fn ui(self, ui: &mut Ui) -> Response {
+        let mut click_response: Option<Response> = None;
+        let resp = ui.horizontal(|ui| {
+            let width = ui.available_width();
+            let item_width = width / (self.actions.len() as f32);
+            let size = Vec2::new(item_width, ui.available_height());
+            ui.spacing_mut().item_spacing.x = 0.0;
+            ui.style_mut().visuals.widgets.inactive.rounding = Rounding::none();
+            ui.style_mut().visuals.widgets.active.rounding = Rounding::none();
+            ui.style_mut().visuals.widgets.hovered.rounding = Rounding::none();
+            ui.style_mut().visuals.widgets.open.rounding = Rounding::none();
+            for item in self.actions.into_iter() {
+                let (_, rect) = ui.allocate_space(size);
+                
+                let btn = Button::new(item.text.clone())
+                    .small()
+                    .stroke(Stroke::none());
+
+                let mut btn_resp = ui.put(rect, btn);
+
+                if btn_resp.clicked() {
+                    btn_resp.mark_changed();
+                    click_response = Some(btn_resp);
+                    item.invoke();
+                }
+
+            }
+        });
+        if click_response.is_some() {
+            resp.response.union(click_response.unwrap())
+        } else {
+            resp.response
+        }
+    }
+}
+
+#[macro_export]
+macro_rules! count {
+    () => (0usize);
+    ( $x:tt $($xs:tt)* ) => (1usize + super::count!($($xs)*));
+}
+
+pub(crate) use count;
+
+#[macro_export]
+macro_rules! function_bar {
+    [ $ui:expr; $( $title:expr => $code:block) + ] => {
+        let count = super::count!($($title)*);
+        let mut click_response: Option<Response> = None;
+        let resp = $ui.horizontal(|ui| {
+            let width = ui.available_width();
+            let item_width = width / (count as f32);
+            let size = Vec2::new(item_width, ui.available_height());
+            ui.spacing_mut().item_spacing.x = 0.0;
+            ui.style_mut().visuals.widgets.inactive.rounding = Rounding::none();
+            ui.style_mut().visuals.widgets.active.rounding = Rounding::none();
+            ui.style_mut().visuals.widgets.hovered.rounding = Rounding::none();
+            ui.style_mut().visuals.widgets.open.rounding = Rounding::none();
+            $({
+                let (_, rect) = ui.allocate_space(size);
+                
+                let btn = Button::new($title)
+                    .small()
+                    .stroke(Stroke::none());
+
+                let mut btn_resp = ui.put(rect, btn);
+
+                if btn_resp.clicked() {
+                    btn_resp.mark_changed();
+                    click_response = Some(btn_resp);
+                    $code
+                }
+            })+
+        });
+        if click_response.is_some() {
+            resp.response.union(click_response.unwrap())
+        } else {
+            resp.response
+        }
+        
+    };
+}
+
+pub(crate) use function_bar;
+
+pub struct Ballot<'a> {
+    state: &'a mut bool,
+    mark_color: Option<Color32>,
+}
+
+impl<'a> Ballot<'a> {
+    fn new(state: &'a mut bool) -> Self {
+        Self {
+            state,
+            mark_color: Some(Color32::from_rgb(255, 195, 0)),
+        }
+    }
+
+    #[inline(always)]
+    fn red(self) -> Self {
+        self.color(Color32::RED)
+    }
+
+    #[inline(always)]
+    fn yellow(self) -> Self {
+        self.color(Color32::YELLOW)
+    }
+
+    #[inline(always)]
+    fn green(self) -> Self {
+        self.color(Color32::GREEN)
+    }
+
+    #[inline(always)]
+    fn blue(self) -> Self {
+        self.color(Color32::LIGHT_BLUE)
+    }
+
+    #[inline(always)]
+    fn color(mut self, mark_color: impl Into<Color32>) -> Self {
+        self.mark_color = Some(mark_color.into());
+        self
+    }
+}
+
+impl<'a> Widget for Ballot<'a> {
+    fn ui(self, ui: &mut Ui) -> Response {
+        let size = ui.spacing().interact_size.y;
+        let (rect, mut response) = ui.allocate_exact_size(vec2(size,size), Sense::click());
+
+        if ui.is_rect_visible(rect) {
+            
+            let visuals = ui.style().interact(&response);
+
+            let painter = ui.painter();
+            painter.rect(
+                rect,
+                Rounding::none(),
+                visuals.bg_fill,
+                visuals.bg_stroke,
+            );
+            if *self.state {
+                let dot_rect = rect.shrink(3.0);
+                painter.rect(
+                    dot_rect,
+                    Rounding::none(),
+                    self.mark_color.unwrap_or(visuals.fg_stroke.color),
+                    visuals.bg_stroke,
+                );  
+            }
+        }
+
+        // By reacting after rendering, we can prevent the appearance changing in the same frame.
+        // This prevents jarring effects in dynamic UIs.
+        if response.clicked() {
+            *self.state = !*self.state;
+            response.mark_changed();
+        }
+        
+        response
+    }
+}
+
+pub struct CallOnce<'a,T> {
+    callback: Option<Box<dyn FnOnce(T) + 'a>>
+}
+
+impl<'a,T> CallOnce<'a,T> {
+
+    fn new(callback: impl FnOnce(T) + 'a) -> Self {
+        Self {
+            callback: Some(Box::new(callback))
+        }
+    }
+
+    fn invoke(&mut self, value: T) {
+        if let Some(callback) = self.callback.take() {
+            callback(value);
+        }
+    }
+}
+
+pub struct Tab<'a> {
+    title: WidgetText,
+    id: Id,
+
+    // TODO: More settings, such as whether or not this tab is closeable.
+    callback: CallOnce<'a, (&'a mut Ui, usize)>,
+}
+
+pub type TabList<'a> = Vec<Tab<'a>>;
+
+pub enum TabEvent {
+    None,
+    SwitchedTab { from: usize, to: usize },
+    RequestClose(usize),
+}
+
+pub struct TabResponse<R> {
+    inner: InnerResponse<R>,
+}
+
+impl<R> TabResponse<R> {
+    fn new( response: Response, result: R) -> Self {
+        Self {
+            inner: InnerResponse::new(result, response),
+        }
+    }
+}
+
+// This won't allow closing of tabs.
+pub struct TabBrowser<'a> {
+    tabs: TabList<'a>,
+}
+
 pub trait UiExtensions {
     // All ui extensions can go here
     /// A button that fills the available width of the ui.
@@ -973,13 +1228,17 @@ pub trait UiExtensions {
     fn selectable_icon(&mut self, checked: bool, icon: Icon) -> Response;
     fn button_bar<R: Copy>(&mut self, items: &[(&str, R)]) -> InnerResponse<Option<R>>;
     fn ballot(&mut self, checked: &mut bool) -> Response;
+    fn function_bar<'a>(&mut self, actions: Vec<FunctionBarAction<'a>>) -> Response;
 
 }
 
 impl UiExtensions for Ui {
     fn wide_button(&mut self, text: impl Into<WidgetText>) -> Response {
-        self.put(self.max_rect(), Button::new(text))
+        let mut rect = self.max_rect();
+        rect.set_height(rect.height().min(self.spacing().interact_size.y));
+        self.put(rect, Button::new(text))
     }
+
     fn icon(&mut self, icon: Icon) -> Response {
         self.label(icon.text())
     }
@@ -1003,21 +1262,12 @@ impl UiExtensions for Ui {
     }
 
     fn ballot(&mut self, checked: &mut bool) -> Response {
-        // This will draw a square box within a box.
-        let height = self.available_height().min(self.spacing().interact_size.y);
-        let size = Vec2::new(height - 6.0, height - 6.0);
-        let take_size = Vec2::new(height, height);
-        self.allocate_ui(take_size, |ui| {
-            let center = ui.max_rect().center();
-            let position = Pos2::new(center.x - size.x / 2.0, center.y - size.y / 2.0);
-            let rect = Rect::from_min_size(position, size);
-            let resp = ui.allocate_rect(rect, Sense::click());
-            let painter = ui.painter();
-            painter.rect(rect, Rounding::none(), Color32::from_rgb(64, 64, 64), Stroke::new(1.0, Color32::BLACK));
-            // TODO: Remove placeholder
-            resp
-        }).inner
+        self.add(Ballot::new(checked))
 
+    }
+
+    fn function_bar<'a>(&mut self, actions: Vec<FunctionBarAction<'a>>) -> Response {
+        self.add(FunctionBar::new(actions))
     }
 
 }
