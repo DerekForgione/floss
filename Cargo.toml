@@ -1,7 +1,7 @@
 [package]
-name = "eframe_template"
+name = "floss"
 version = "0.1.2"
-authors = ["Emil Ernerfeldt <emil.ernerfeldt@gmail.com>"]
+authors = ["SevenSolaris <https://github.com/SevenSolaris>"]
 edition = "2021"
 rust-version = "1.60"
 
