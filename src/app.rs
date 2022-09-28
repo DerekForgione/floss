@@ -1,5 +1,4 @@
 use crate::tasker::{self, *};
-use eframe::glow::FRACTIONAL_EVEN;
 use egui::{self, *, style::Margin};
 use crate::ui_extensions::*;
 use crate::debug::*;
@@ -31,7 +30,7 @@ pub struct FlossApp {
     sample_list: Vec<Task>,
     #[cfg(debug_assertions)]
     #[serde(skip)]
-    DebugOpen: bool,
+    testwin_open: bool,
     #[cfg(debug_assertions)]
     #[serde(skip)]
     debug: DebugData,
@@ -40,7 +39,14 @@ pub struct FlossApp {
 impl Default for FlossApp {
     fn default() -> Self {
         Self {
-           ..Default::default()
+           tasks: TaskList::new(),
+           new_popup: Default::default(),
+           #[cfg(debug_assertions)]
+           sample_list: TaskList::new(),
+           #[cfg(debug_assertions)]
+           testwin_open: false,
+           #[cfg(debug_assertions)]
+           debug:DebugData::new(),
         }
     }
 }
@@ -75,9 +81,10 @@ impl eframe::App for FlossApp {
         let Self { 
             tasks, 
             new_popup, 
+            #[cfg(debug_assertions)]
             sample_list, 
             #[cfg(debug_assertions)]
-            DebugOpen,
+            testwin_open,
             #[cfg(debug_assertions)]
             debug,
         } = self;
@@ -92,8 +99,9 @@ impl eframe::App for FlossApp {
             // The top panel is often a good place for a menu bar:
             egui::menu::bar(ui, |ui| {
                 ui.menu_button("File", |ui| {
+                    #[cfg(debug_assertions)]
                     if ui.button("Debug").clicked() {
-                        *DebugOpen = true;
+                        *testwin_open = true;
                         debug.open = true;
                     }
                     if ui.button("Quit").clicked() {
@@ -183,13 +191,12 @@ impl eframe::App for FlossApp {
         });
 
         #[cfg(debug_assertions)]
-        debug.show(ctx);
-        #[cfg(debug_assertions)]
         if true {
-            egui::Window::new("Test GUI").open(DebugOpen).show(ctx, |ui| {
+            debug.show(ctx);
+            egui::Window::new("Test GUI").open(testwin_open).show(ctx, |ui| {
                 
                 // Sample Task UIm
-                let top_btn = ui.horizontal(|top| {
+                ui.horizontal(|top| {
                     if sample_list.is_empty() {
                         let create = top.put(top.max_rect(), Button::new("Create New Task."));
                         if create.clicked() {
