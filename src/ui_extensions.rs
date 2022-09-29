@@ -1,5 +1,7 @@
 #![allow(unused)]
 
+use std::time::Instant;
+
 // Extensions for egui.ui
 use egui::{self, *};
 
@@ -964,93 +966,296 @@ where V: Copy {
     }
 }
 
-pub struct FunctionBarAction<'a> {
-    text: WidgetText,
-    callback: Option<Box<dyn FnOnce() + 'a>>,
+pub struct Callback<'a,R> {
+    pub callback: Option<Box<dyn FnOnce() -> R + 'a>>,
 }
 
-impl<'a> FunctionBarAction<'a> {
-    fn invoke(mut self) {
-        if self.callback.is_some() {
-            if let Some(callback) = self.callback.take() {
-                (callback)();
-            }
+pub trait CallbackOnce<'a,R> {
+    fn invoke(self) -> R;
+    fn invoke_if(self) -> Option<R>;
+}
+
+impl<'a,R> CallbackOnce<'a,R> for Callback<'a,R> {
+
+    /// Panics if the callback has already been consumed.
+    #[inline(always)]
+    fn invoke(mut self) -> R {
+        (
+            self.callback
+                .take()
+                .expect("Callback already invoked.")
+        )()
+    }
+
+    /// Returns None if the callback has already been consumed.
+    #[inline(always)]
+    fn invoke_if(mut self) -> Option<R> {
+        self.callback
+            .take()
+            .map(|callback| callback())
+    }
+
+}
+
+impl<'a, R> CallbackOnce<'a,R> for Option<Box<dyn FnOnce() -> R + 'a>> {
+    #[inline(always)]
+    fn invoke(mut self) -> R {
+        (
+            self.take()
+                .expect("Callback already invoked.")
+        )()
+    }
+
+    #[inline(always)]
+    fn invoke_if(mut self) -> Option<R> {
+        self.take()
+            .map(|callback| callback())
+    }
+}
+
+impl<'a,F, R> From<F> for Callback<'a, R>
+where F: FnOnce() -> R + 'a {
+    fn from(value: F) -> Self {
+        Self {
+            callback: Some(Box::new(value))
         }
     }
 }
 
-pub fn action<'a, F: FnOnce() + 'a>(
-    text: impl Into<WidgetText>, 
-    callback: F,
-) -> FunctionBarAction<'a> {
-    FunctionBarAction 
-    { 
-        text: text.into(),
-        callback: Some(Box::new(callback)),
+// .fill(impl Into<Color32>)
+// .frame(bool)
+// .sense(Sense)
+// .small()
+// .stroke(impl Into<Stroke>)
+// .wrap(bool)
+pub struct FunctionBarButton<'a> {
+    text: WidgetText,
+    enabled: bool,
+    visible: bool,
+    callback: Option<Box<dyn FnOnce() + 'a>>,
+    id: Option<Id>,
+    // Button Options
+    fill: Option<Color32>,
+    frame: Option<bool>,
+    sense: Option<Sense>,
+    small: Option<bool>,
+    stroke: Option<Stroke>,
+    wrap: Option<bool>,
+}
+
+impl<'a> FunctionBarButton<'a> {
+
+    pub fn new<F: FnOnce() + 'a>(text: impl Into<WidgetText>, callback: F) -> Self {
+        Self {
+            text: text.into(),
+            // By using the time as the Id, we guarantee uniqueness for this frame.
+            id: None,
+            enabled: true,
+            visible: true,
+            callback: Some(Box::new(callback)),
+            fill: None,
+            frame: None,
+            sense: None,
+            small: None,
+            stroke: None,
+            wrap: None,
+        }
+    }
+
+    #[inline(always)]
+    pub fn id(mut self, id: impl Into<Id>) -> Self {
+        self.set_id(id);
+        self
+    }
+
+    #[inline(always)]
+    pub fn enabled(mut self, enabled: impl Into<bool>) -> Self {
+        self.set_enabled(enabled);
+        self
+    }
+
+    #[inline(always)]
+    pub fn visible(mut self, visible: impl Into<bool>) -> Self {
+        self.set_visible(visible);
+        self
+    }
+
+
+    #[inline(always)]
+    pub fn set_id(&mut self, id: impl Into<Id>) {
+        self.id = Some(id.into());
+    }
+
+    #[inline(always)]
+    pub fn set_enabled(&mut self, enabled: impl Into<bool>) {
+        self.enabled = enabled.into();
+    }
+
+    #[inline(always)]
+    pub fn set_visible(&mut self, visible: impl Into<bool>) {
+        self.visible = visible.into();
+    }
+
+    /// Invokes and consumes the callback.
+    /// Panics if the callback has been consumed.
+    #[inline(always)]
+    pub fn invoke(mut self) {
+        if let Some(callback) = self.callback.take() {
+            (callback)();
+        } else {
+            panic!("Cannot invoke a consumed callback.");
+        }
+    }
+
+    /// Invokes and consumes the callback if it has not already been consumed.
+    /// Returns true if it was successfully invoked.
+    #[inline(always)]
+    pub fn invoke_if(mut self) -> bool {
+        if let Some(callback) = self.callback.take() {
+            (callback)();
+            true
+        } else {
+            false
+        }
     }
 }
 
 pub struct FunctionBar<'a> {
-    actions: Vec<FunctionBarAction<'a>>,
+    actions: Vec<FunctionBarButton<'a>>,
+    id: Id,
 }
 
 impl<'a> FunctionBar<'a> {
-    fn new(actions: Vec<FunctionBarAction<'a>>) -> Self {
+    pub fn new() -> Self {
         Self {
-            actions,
+            actions: Vec::new(),
+            // Create the default id from the current time to guarantee uniqueness.
+            id: Id::new(Instant::now()),
         }
     }
-}
 
-impl<'a> Widget for FunctionBar<'a> {
-    fn ui(self, ui: &mut Ui) -> Response {
-        let mut click_response: Option<Response> = None;
+    pub fn with_id<ID>(id: ID) -> Self
+    where ID: Into<Id> {
+        Self {
+            actions: Vec::new(),
+            id: id.into(),
+        }
+    }
+
+    pub fn action<F, T>(mut self, text: T, callback: F) -> Self
+    where
+        F: FnOnce() + 'a,
+        T: Into<WidgetText> {
+        self.actions.push(FunctionBarButton::new(text, callback));
+        self
+    }
+
+    pub fn id<ID>(mut self, id: ID) -> Self
+    where ID: Into<Id> {
+        self.actions
+            .last_mut()
+            .expect("Cannot assign id to empty collection.")
+            .set_id(id);
+        self
+    }
+
+    pub fn enabled<T>(mut self, state: T) -> Self
+    where T: Into<bool> {
+        self.actions
+            .last_mut()
+            .expect("Cannot assign enabled state to empty collection.")
+            .set_enabled(state);
+        self
+    }
+
+    pub fn visible<T>(mut self, visible: T) -> Self
+    where T: Into<bool> {
+        self.actions
+            .last_mut()
+            .expect("Cannot assign visible state to empty collection.")
+            .set_visible(visible);
+        self
+    }
+
+    pub fn show(mut self, ui: &mut Ui) -> Response {
+        // so that we can return the clicked button's response.
+        let mut active_btn_response: Option<Response> = None;
+
         let resp = ui.horizontal(|ui| {
             let width = ui.available_width();
             let item_width = width / (self.actions.len() as f32);
-            let size = Vec2::new(item_width, ui.available_height());
+            let size = Vec2::new(item_width, ui.spacing().interact_size.y);
             ui.spacing_mut().item_spacing.x = 0.0;
-            ui.style_mut().visuals.widgets.inactive.rounding = Rounding::none();
-            ui.style_mut().visuals.widgets.active.rounding = Rounding::none();
-            ui.style_mut().visuals.widgets.hovered.rounding = Rounding::none();
-            ui.style_mut().visuals.widgets.open.rounding = Rounding::none();
-            for item in self.actions.into_iter() {
-                let (_, rect) = ui.allocate_space(size);
-                
-                let btn = Button::new(item.text.clone())
-                    .small()
-                    .stroke(Stroke::none());
+            for mut item in self.actions.into_iter() {
 
-                let mut btn_resp = ui.put(rect, btn);
+                ui.allocate_ui(size, |ui| {
 
-                if btn_resp.clicked() {
-                    btn_resp.mark_changed();
-                    click_response = Some(btn_resp);
-                    item.invoke();
-                }
+                    let btn = Button::new(item.text.clone())
+                        .small()
+                        .stroke(Stroke::none());
+
+                    ui.set_enabled(item.enabled);
+                    ui.set_visible(item.visible);
+
+                    let putter = |ui: &mut Ui| -> Response {
+                        ui.put(ui.max_rect(), btn)
+                    };
+
+                    let mut btn_resp = item.id.take()
+                        .map(|id| { 
+                            ui.push_id(id, |ui| { 
+                                ui.put(
+                                    ui.max_rect(), 
+                                    Button::new(item.text.clone())
+                                        .small()
+                                        .stroke(Stroke::none())
+                                )
+                            }).inner
+                        })
+                        .or_else(|| {
+                            Some(
+                                ui.put(
+                                    ui.max_rect(),
+                                    Button::new(item.text.clone())
+                                        .small()
+                                        .stroke(Stroke::none())
+                                )
+                            )
+                        }).unwrap();
+    
+                    if btn_resp.clicked() {
+                        btn_resp.mark_changed();
+                        active_btn_response = Some(btn_resp);
+                        item.invoke();
+                    } else if btn_resp.hovered()
+                    || btn_resp.has_focus() {
+                        active_btn_response = Some(btn_resp);
+                    }
+
+                });
 
             }
         });
-        if click_response.is_some() {
-            resp.response.union(click_response.unwrap())
+
+        if active_btn_response.is_some() {
+            active_btn_response.unwrap().union(resp.response)
         } else {
             resp.response
         }
     }
+
 }
 
 #[macro_export]
-macro_rules! count {
+macro_rules! count_vars {
     () => (0usize);
-    ( $x:tt $($xs:tt)* ) => (1usize + super::count!($($xs)*));
+    ( $x:tt $($xs:tt)* ) => (1usize + super::count_vars!($($xs)*));
 }
-
-pub(crate) use count;
 
 #[macro_export]
 macro_rules! function_bar {
     [ $ui:expr; $( $title:expr => $code:block) + ] => {
-        let count = super::count!($($title)*);
+        let count = super::count_vars!($($title)*);
         let mut click_response: Option<Response> = None;
         let resp = $ui.horizontal(|ui| {
             let width = ui.available_width();
@@ -1185,6 +1390,10 @@ impl<'a,T> CallOnce<'a,T> {
     }
 }
 
+pub struct TabCallback<'a, T> {
+
+}
+
 pub struct Tab<'a> {
     title: WidgetText,
     id: Id,
@@ -1228,7 +1437,6 @@ pub trait UiExtensions {
     fn selectable_icon(&mut self, checked: bool, icon: Icon) -> Response;
     fn button_bar<R: Copy>(&mut self, items: &[(&str, R)]) -> InnerResponse<Option<R>>;
     fn ballot(&mut self, checked: &mut bool) -> Response;
-    fn function_bar<'a>(&mut self, actions: Vec<FunctionBarAction<'a>>) -> Response;
 
 }
 
@@ -1264,10 +1472,6 @@ impl UiExtensions for Ui {
     fn ballot(&mut self, checked: &mut bool) -> Response {
         self.add(Ballot::new(checked))
 
-    }
-
-    fn function_bar<'a>(&mut self, actions: Vec<FunctionBarAction<'a>>) -> Response {
-        self.add(FunctionBar::new(actions))
     }
 
 }
