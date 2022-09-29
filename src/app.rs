@@ -1,29 +1,15 @@
-use crate::tasker::{self, *};
+use crate::task::{self, *};
+use eframe::epaint::Shadow;
 use egui::{self, *, style::Margin};
 use crate::ui_extensions::*;
 use crate::debug::*;
-
-struct NewTaskPopup {
-    // title, description
-    pub title: String,
-    pub description: Option<String>,
-}
-
-impl Default for NewTaskPopup {
-    fn default() -> Self {
-        Self {
-            title: "".to_owned(),
-            description: None,
-        }
-    }
-}
 
 /// We derive Deserialize/Serialize so we can persist app state on shutdown.
 #[derive(serde::Deserialize, serde::Serialize)]// if we add new fields, give them default values when deserializing old state
 pub struct FlossApp {
     tasks: Vec<Task>,
     #[serde(skip)]
-    new_popup: NewTaskPopup,
+    new_popup: NewTaskPopupButton,
     // Debug Stuff
     #[cfg(debug_assertions)]
     #[serde(skip)]
@@ -97,6 +83,13 @@ impl eframe::App for FlossApp {
         #[cfg(not(target_arch = "wasm32"))] // no File->Quit on web pages!
         egui::TopBottomPanel::top("top_panel").show(ctx, |ui| {
             // The top panel is often a good place for a menu bar:
+            ui.style_mut().visuals.window_rounding = Rounding::none();
+            ui.style_mut().visuals.popup_shadow = Shadow::default();
+            ui.style_mut().visuals.widgets.active.rounding = Rounding::none();
+            ui.style_mut().visuals.widgets.inactive.rounding = Rounding::none();
+            ui.style_mut().visuals.widgets.hovered.rounding = Rounding::none();
+            ui.style_mut().visuals.widgets.open.rounding = Rounding::none();
+            ui.style_mut().visuals.widgets.noninteractive.rounding = Rounding::none();
             egui::menu::bar(ui, |ui| {
                 ui.menu_button("File", |ui| {
                     #[cfg(debug_assertions)]
@@ -108,84 +101,20 @@ impl eframe::App for FlossApp {
                         _frame.close();
                     }
                 });
-                ui.menu_button("Add Task", |ui| {
-                    ui.group(|ui| {
-                        ui.allocate_ui(Vec2::new(POPUP_WIDTH, ui.spacing().interact_size.y), |ui| {
-                            ui.put(ui.max_rect(), text_edit::TextEdit::singleline(&mut new_popup.title).hint_text("Title"));
-                        });
-                        let mut clear_desc = false;
-                        if let Some(description) = &mut new_popup.description {
-                            ui.allocate_ui(Vec2::new(POPUP_WIDTH, ui.spacing().interact_size.y * 4.0), |ui| {
-                                let empty_before = description.is_empty();
-                                let resp = ui.put(ui.max_rect(), text_edit::TextEdit::multiline(description).hint_text("Description (Press [Delete] To Remove)"));
-                                if resp.has_focus() && description.is_empty() && empty_before {
-                                    if ui.input().key_pressed(Key::Delete) {
-                                        clear_desc = true;
-                                    }
-                                }
-                            });
-                            if new_popup.title.is_empty() {
-                                ui.allocate_ui(Vec2::new(POPUP_WIDTH, ui.spacing().interact_size.y), |ui| {
-                                    let btn = ui.put(ui.max_rect(), Button::new("Remove Description"));
-                                    if btn.clicked() {
-                                        new_popup.description = None;
-                                    }
-                                });
-                            }
-                        } else {
-                            if new_popup.title.is_empty() {
-                                ui.allocate_ui(Vec2::new(POPUP_WIDTH, ui.spacing().interact_size.y), |ui| {
-                                    let btn = ui.put(ui.max_rect(), Button::new("Add Description"));
-                                    if btn.clicked() {
-                                        new_popup.description = Some("".to_owned());
-                                    }
-                                });
-                            }
-                        }
-                        if clear_desc {
-                            new_popup.description = None;
-                        }
-                        if !new_popup.title.is_empty() {
-                            ui.allocate_ui(Vec2::new(POPUP_WIDTH, ui.spacing().interact_size.y), |ui| {
-                                ui.columns(2, |cols| {
-                                    cols[0].columns(2, |cols| {
-                                        let create = cols[0].put(cols[0].max_rect(), Button::new("Add"));
-                                        let clear = cols[1].put(cols[1].max_rect(), Button::new("Clear"));
-                                        if create.clicked() {
-                                            tasks.push(Task::new(new_popup.title.clone(), cols[0].next_id()));
-                                            new_popup.title = "".to_owned();
-                                            new_popup.description = None;
-                                        }
-                                        if clear.clicked() {
-                                            new_popup.title = "".to_owned();
-                                            new_popup.description = None;
-                                        }
-                                    });
-                                    let desc_title = if new_popup.description.is_some() {
-                                        "Remove Description".to_owned()
-                                    } else {
-                                        "Add Description".to_owned()
-                                    };
-                                    let desc_btn = cols[1].put(cols[1].max_rect(), Button::new(desc_title));
-                                    if desc_btn.clicked() {
-                                        if new_popup.description.is_some() {
-                                            new_popup.description = None;
-                                        } else {
-                                            new_popup.description = Some("".to_owned());
-                                        }
-                                    }
-                                });
-                            });
-                        }
-
-                    });
-                });
+                new_popup.show(ui, "⊞", tasks);
             });
         });
 
         egui::CentralPanel::default().show(ctx, |ui| {
+            ui.style_mut().visuals.window_rounding = Rounding::none();
+            ui.style_mut().visuals.popup_shadow = Shadow::default();
+            ui.style_mut().visuals.widgets.active.rounding = Rounding::none();
+            ui.style_mut().visuals.widgets.inactive.rounding = Rounding::none();
+            ui.style_mut().visuals.widgets.hovered.rounding = Rounding::none();
+            ui.style_mut().visuals.widgets.open.rounding = Rounding::none();
+            ui.style_mut().visuals.widgets.noninteractive.rounding = Rounding::none();
             ScrollArea::vertical().show(ui, |ui| {
-                tasker::render_list(ui, tasks);
+                task::render_list(ui, tasks);
             });
             egui::warn_if_debug_build(ui);
         });
@@ -194,13 +123,19 @@ impl eframe::App for FlossApp {
         if true {
             debug.show(ctx);
             egui::Window::new("Test GUI").open(testwin_open).show(ctx, |ui| {
-                
+                ui.style_mut().visuals.window_rounding = Rounding::none();
+                ui.style_mut().visuals.popup_shadow = Shadow::default();
+                ui.style_mut().visuals.widgets.active.rounding = Rounding::none();
+                ui.style_mut().visuals.widgets.inactive.rounding = Rounding::none();
+                ui.style_mut().visuals.widgets.hovered.rounding = Rounding::none();
+                ui.style_mut().visuals.widgets.open.rounding = Rounding::none();
+                ui.style_mut().visuals.widgets.noninteractive.rounding = Rounding::none();
                 // Sample Task UIm
                 ui.horizontal(|top| {
                     if sample_list.is_empty() {
                         let create = top.put(top.max_rect(), Button::new("Create New Task."));
                         if create.clicked() {
-                            sample_list.push(Task::new("Untitled Task", top.next_id()));
+                            sample_list.push(Task::new("Untitled Task"));
                         }
                         create
                     } else {
@@ -232,7 +167,7 @@ impl eframe::App for FlossApp {
                         });
                     });}); // win.allocate_ui
                     if ui.button("Another One").clicked() {
-                        sample_list.push(Task::new("Untitled", ui.next_id()));
+                        sample_list.push(Task::new("Untitled"));
                     }
                 }
                 let result = ui.button_bar(&[
