@@ -190,8 +190,8 @@ impl eframe::App for FlossApp {
                 ui.with_layout(Layout::top_down(Align::Min).with_cross_justify(true), |ui| {
                     ui.style_mut().override_text_style = Some(TextStyle::Monospace);
                     Frame::group(ui.style()).inner_margin(Margin::same(0.0)).show(ui, |ui| {
-                        ui.button("Test");
-                        ui.button("Another button");
+                        _ = ui.button("Test");
+                        _ = ui.button("Another button");
                     });
                 });
             });
