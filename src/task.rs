@@ -265,7 +265,7 @@ impl Task {
             .rounding(Rounding::none())
             .show(ui, |ui| {
                 ui.horizontal(|ui| {
-                    let mark = /* ui.horizontal (|ui| */ {
+                    let mark =  ui.horizontal (|ui|  {
                         let mut check = self.complete();
                         if self.editing {
                             ui.set_visible(false);
@@ -274,12 +274,18 @@ impl Task {
                         if mark.changed() {
                             self.toggle_complete();
                         }
+                        //let add = ui.small_button("[+]"); //⊞
+                        let add = ui.add(
+                            Button::new("[+]")
+                                .frame(false)
+                                // .small()
+                                .stroke(Stroke::none())
+                        );
+                        if add.clicked() {
+                            self.add(Task::new("Untitled Task"));
+                        }
                         mark
-                    }/*).inner*/;
-                    let add = ui.button("⊞");
-                    if add.clicked() {
-                        self.add(Task::new("Untitled Task"));
-                    }
+                    }).inner;
                     let title = if self.editing {
                         let resp = ui.text_edit_singleline(&mut self.title);
                         if resp.lost_focus() {
@@ -295,15 +301,15 @@ impl Task {
                     };
                     let right = ui.with_layout(Layout::right_to_left(Align::Min), |ui| {
                         ui.spacing_mut().item_spacing.x = 4.0;
-                        let exit = ui.button(RichText::new("⊗").color(Color32::RED));
-                        if exit.clicked() {
+                        let delete = ui.button(RichText::new("⊗").color(Color32::RED));
+                        if delete.clicked() {
                             self.remove_me = true;
                         }
                         let edit = ui.button(if self.editing { "💾" } else { "✏" });
                         if edit.clicked() {
                             self.editing = !self.editing;
                         }
-                        exit | edit
+                        delete | edit
                     }).inner;
                     mark | title | right
                 }).response
