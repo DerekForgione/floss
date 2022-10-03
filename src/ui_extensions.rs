@@ -865,6 +865,7 @@ pub enum Icon {
 
 impl Icon {
 
+    #[inline(always)]
     fn text(&self) -> String {
         let v = *self as u32;
         if let Some(chr) = char::from_u32(v) {
@@ -892,12 +893,14 @@ impl Icon {
 }
 
 impl Into<char> for Icon {
+    #[inline(always)]
     fn into(self) -> char {
         char::from_u32(self as u32).unwrap_or('\0')
     }
 }
 
 impl Into<String> for Icon {
+    #[inline(always)]
     fn into(self) -> String {
         if let Some(value) = char::from_u32(self as u32) {
             String::from(value)
@@ -908,6 +911,7 @@ impl Into<String> for Icon {
 }
 
 impl Widget for Icon {
+    #[inline(always)]
     fn ui(self, ui: &mut Ui) -> Response {
         let text: String = self.into();
         ui.button(text)
@@ -922,6 +926,7 @@ where V: Copy {
 
 impl<'a,V> ButtonBar<'a,V>
 where V: Copy {
+    #[inline(always)]
     fn new(items: &'a [(&'a str, V)], result: &'a mut Option<V>) -> Self {
         Self {
             items,
@@ -1015,6 +1020,7 @@ impl<'a, R> CallbackOnce<'a,R> for Option<Box<dyn FnOnce() -> R + 'a>> {
 
 impl<'a,F, R> From<F> for Callback<'a, R>
 where F: FnOnce() -> R + 'a {
+    #[inline(always)]
     fn from(value: F) -> Self {
         Self {
             callback: Some(Box::new(value))
@@ -1045,6 +1051,7 @@ pub struct FunctionBarButton<'a> {
 
 impl<'a> FunctionBarButton<'a> {
 
+    #[inline(always)]
     pub fn new<F: FnOnce() + 'a>(text: impl Into<WidgetText>, callback: F) -> Self {
         Self {
             text: text.into(),
@@ -1126,6 +1133,7 @@ pub struct FunctionBar<'a> {
 }
 
 impl<'a> FunctionBar<'a> {
+    #[inline(always)]
     pub fn new() -> Self {
         Self {
             actions: Vec::new(),
@@ -1134,6 +1142,7 @@ impl<'a> FunctionBar<'a> {
         }
     }
 
+    #[inline(always)]
     pub fn with_id<ID>(id: ID) -> Self
     where ID: Into<Id> {
         Self {
@@ -1142,6 +1151,7 @@ impl<'a> FunctionBar<'a> {
         }
     }
 
+    #[inline(always)]
     pub fn action<F, T>(mut self, text: T, callback: F) -> Self
     where
         F: FnOnce() + 'a,
@@ -1150,6 +1160,7 @@ impl<'a> FunctionBar<'a> {
         self
     }
 
+    #[inline(always)]
     pub fn id<ID>(mut self, id: ID) -> Self
     where ID: Into<Id> {
         self.actions
@@ -1159,6 +1170,7 @@ impl<'a> FunctionBar<'a> {
         self
     }
 
+    #[inline(always)]
     pub fn enabled<T>(mut self, state: T) -> Self
     where T: Into<bool> {
         self.actions
@@ -1168,6 +1180,7 @@ impl<'a> FunctionBar<'a> {
         self
     }
 
+    #[inline(always)]
     pub fn visible<T>(mut self, visible: T) -> Self
     where T: Into<bool> {
         self.actions
@@ -1371,61 +1384,61 @@ impl<'a> Widget for Ballot<'a> {
     }
 }
 
-pub struct CallOnce<'a,T> {
-    callback: Option<Box<dyn FnOnce(T) + 'a>>
-}
+// pub struct CallOnce<'a,T> {
+//     callback: Option<Box<dyn FnOnce(T) + 'a>>
+// }
 
-impl<'a,T> CallOnce<'a,T> {
+// impl<'a,T> CallOnce<'a,T> {
 
-    fn new(callback: impl FnOnce(T) + 'a) -> Self {
-        Self {
-            callback: Some(Box::new(callback))
-        }
-    }
+//     fn new(callback: impl FnOnce(T) + 'a) -> Self {
+//         Self {
+//             callback: Some(Box::new(callback))
+//         }
+//     }
 
-    fn invoke(&mut self, value: T) {
-        if let Some(callback) = self.callback.take() {
-            callback(value);
-        }
-    }
-}
+//     fn invoke(&mut self, value: T) {
+//         if let Some(callback) = self.callback.take() {
+//             callback(value);
+//         }
+//     }
+// }
 
-pub struct TabCallback<'a, T> {
+// pub struct TabCallback<'a, T> {
 
-}
+// }
 
-pub struct Tab<'a> {
-    title: WidgetText,
-    id: Id,
+// pub struct Tab<'a> {
+//     title: WidgetText,
+//     id: Id,
 
-    // TODO: More settings, such as whether or not this tab is closeable.
-    callback: CallOnce<'a, (&'a mut Ui, usize)>,
-}
+//     // TODO: More settings, such as whether or not this tab is closeable.
+//     callback: CallOnce<'a, (&'a mut Ui, usize)>,
+// }
 
-pub type TabList<'a> = Vec<Tab<'a>>;
+// pub type TabList<'a> = Vec<Tab<'a>>;
 
-pub enum TabEvent {
-    None,
-    SwitchedTab { from: usize, to: usize },
-    RequestClose(usize),
-}
+// pub enum TabEvent {
+//     None,
+//     SwitchedTab { from: usize, to: usize },
+//     RequestClose(usize),
+// }
 
-pub struct TabResponse<R> {
-    inner: InnerResponse<R>,
-}
+// pub struct TabResponse<R> {
+//     inner: InnerResponse<R>,
+// }
 
-impl<R> TabResponse<R> {
-    fn new( response: Response, result: R) -> Self {
-        Self {
-            inner: InnerResponse::new(result, response),
-        }
-    }
-}
+// impl<R> TabResponse<R> {
+//     fn new( response: Response, result: R) -> Self {
+//         Self {
+//             inner: InnerResponse::new(result, response),
+//         }
+//     }
+// }
 
-// This won't allow closing of tabs.
-pub struct TabBrowser<'a> {
-    tabs: TabList<'a>,
-}
+// // This won't allow closing of tabs.
+// pub struct TabBrowser<'a> {
+//     tabs: TabList<'a>,
+// }
 
 pub trait UiExtensions {
     // All ui extensions can go here
