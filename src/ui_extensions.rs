@@ -1055,11 +1055,10 @@ impl<'a> FunctionBarButton<'a> {
     pub fn new<F: FnOnce() + 'a>(text: impl Into<WidgetText>, callback: F) -> Self {
         Self {
             text: text.into(),
-            // By using the time as the Id, we guarantee uniqueness for this frame.
-            id: None,
             enabled: true,
             visible: true,
             callback: Some(Box::new(callback)),
+            id: None,
             fill: None,
             frame: None,
             sense: None,
